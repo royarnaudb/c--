@@ -1,2 +1,2 @@
-char parseOperand(char c, double* number);
-char parseMathExpression(double* operands, char* operators, char* load);
+char parse_operand(char c, double* number);
+char parse_expr(double* operands, char* operators, char* window_at);

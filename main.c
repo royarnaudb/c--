@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include "compute-math-expr.h"
 
-int main(void){
-
+int main(void)
+{
 	double calculate(char* status);
 	char status ='\0';
 

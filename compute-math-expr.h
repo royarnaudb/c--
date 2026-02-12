@@ -1,6 +1,5 @@
 double calculate(char* status);
-char isThere(char c, char* operands);
-void compute(char* operators, double* operands, char* load);
-int highestOperator(char* operators);
-void arithmeticOperation(char operator, double* a, double* b, double* result);
-void updateData(char mode, char* load, char* operators, double* operands);
+void compute(char* operators, double* operands, char* window_at);
+int highest_order_op(char* operators);
+void arithmetic_op(char operator, double* a, double* b, double* result);
+void shift_window(char mode, char* window_at, char* operators, double* operands);
