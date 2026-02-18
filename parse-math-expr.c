@@ -9,9 +9,9 @@
 	function that is used to parse an operand from the inputstream buffer.
 */
 
-#include <stdio.h>
-#include <math.h>
+#include <math.h> // TODO: Make a util pow()
 #include "parse-math-expr.h"
+#include "io.h"
 
 /*! \fn char parse_operand(char c, double* operand)
 		\brief This function is used to parse an operand from the inputstream buffer.
@@ -54,11 +54,11 @@ char parse_operand(char c, double* operand)
 	else
 		return c;
 
-	c = getchar();
+	c = get_char();
 	char exponent = 0;  // Used for computing the fractional part of the operand
 
 	while( (c >= '0' && c<='9') || c == '.'  ){
-		if (c >= '0' && c<='9'){
+		if(c >= '0' && c<='9'){
 			if(hasFractionalPart == 1)
 				*operand += (double)(c-'0') / (double)pow(10, ++exponent);
 			else
@@ -70,7 +70,7 @@ char parse_operand(char c, double* operand)
 			return 's';
 		else
 			hasFractionalPart = 1;
-		c = getchar();
+		c = get_char();
 	}
 	*operand *= sign;	
 	return c;
@@ -90,21 +90,22 @@ char parse_operand(char c, double* operand)
 			- 'c' for closing parenthesis
 			- 'n' for end of expression
 			- '>' for continuing with the expression
+			- '.' for end of input (EOF)
 */
 char parse_expr(double* operands, char* operators, char* window_at)
 {
 	char c;  // character from the buffer
 	char parse_operand(char , double*);
 
-	while( (*window_at) < 3){
-		c = getchar();
+	while((*window_at) < 3){
+		c = get_char();
 		c = parse_operand(c, &operands[*window_at]);
 
 		if(c == 's')
 			return 's'; // syntaxError status
 
 		while( c == ' ' || c == '\t') // we discard white spaces
-			c = getchar();
+			c = get_char();
 
 		switch(c){
 			case '^':
@@ -131,6 +132,8 @@ char parse_expr(double* operands, char* operators, char* window_at)
 				return 'c'; //ClosingParenthesis status.
 			case '\n':
 				return 'n'; //End status: We have reached the end of the expression (e.g. 34 + 78 - 90\n )
+			case EOF:
+				return '.'; //End status: We have reached the end of the expression (e.g. 34 + 78 - 90 EOF )
 			default:
 				return 's'; //SyntaxError status: We have an invalid character in the expression (e.g. 34 + 78 @ 90 )
 		}

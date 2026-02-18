@@ -12,7 +12,9 @@
 #include "parse-math-expr.h"
 #include "compute-math-expr.h"
 
-/*! \fn double calculate(char* status)
+extern char status; // the status variable defined at main.c
+
+/*! \fn double calculate(void)
 		\brief
 		This function is responsible for calculating the result of a mathematical
 		expression.	It uses the function 'parse_expr' to parse the expression and
@@ -20,10 +22,9 @@
 		function also handles operator precedence and parentheses in the
 		expression.
 		
-		\param status a pointer to a char variable that will be used to store the status of the parsing process.
 		\return the result of the calculated expression as a double.
 */
-double calculate(char* status)
+double calculate(void)
 {
 	char window_at = 0;  // The maximum window_at is 2 (WINDOW_SIZE - 1)
 	double operands[3] = {0,0,0}; // The maximum operands we can have at a time is 3 (WINDOW_SIZE)
@@ -34,34 +35,37 @@ double calculate(char* status)
 	void compute(char* operators, double* operands, char* window_at);
 
 	do {
-		*status = parse_expr(operands, operators, &window_at);
-
-		if(*status == '>'){
+		status = parse_expr(operands, operators, &window_at);
+		if(status == '>'){
 			compute(operators, operands, &window_at);
 		}
-		else if(*status == 'n' || *status == 'c'){
+		else if(status == 'n' || status == 'c'){
 			compute(operators, operands, &window_at);
 			break; // break the loop, then return operands[0] as our result
 		}
-		else if(*status == 'o'){
+		else if(status == 'o'){
 			if(contains_nest_op(operators)){
 				operators[window_at] = '*';
 				if(window_at < 2)
-					operands[window_at+1] = calculate(status);
+					operands[window_at+1] = calculate();
 				else{
 					compute(operators, operands, &window_at);
-					operands[window_at] = calculate(status);
+					operands[window_at] = calculate();
 				}
 			}
 			else
-				operands[window_at] = calculate(status);
+				operands[window_at] = calculate();
 			compute(operators, operands, &window_at);
 
-			if(*status == '\n')
+			if(status == 'n')
 				break; // break the loop, then return operands[0] as our result
 		}
-
-	} while(*status != 's');
+		else if(status == '.'){
+			// last computation before we exit the program, in case we have a valid expression before the EOF (e.g. 89+90 EOF )
+			compute(operators, operands, &window_at);
+			break; // break the loop, then return operands[0] as our result
+		}
+	} while(status != 's');
 	return operands[0];
 }
 
