@@ -10,8 +10,15 @@
 */
 
 #include <math.h> // TODO: Make a util pow()
-#include "parse-math-expr.h"
 #include "io.h"
+#include "var-in-expr.h"
+#include "parse-math-expr.h"
+
+
+int sign = 1;
+/// *operand is Positive (default). 'sign' is used at the end of the function to determine the sign of *operand
+int op_mode = 1;
+
 
 /*! \fn char parse_operand(char c, double* operand)
 		\brief This function is used to parse an operand from the inputstream buffer.
@@ -31,15 +38,17 @@
 */ 
 char parse_operand(char c, double* operand)
 {	
-	char hasFractionalPart = 0; // Initialized to False
-	double sign = 1;
-	/// 'hasFractionalPart' is set to True when we encounter the character '.' in the inputstream buffer
-	/// *operand is Positive (default). 'sign' is used at the end of the function to determine the sign of *operand
+	char hasFractionalPart = 0;
+	/// 'hasFractionalPart' is set to 1 (True) when we encounter the character '.' in the inputstream buffer
 	
-	// Set *operand to 0, we compute the operand by adding the significant digits incremetally to this variable
+	sign = 1; // set sign to default for the next operand
+	
+	// Set *operand to 0
 	*operand = 0;
 
-	if(c == '-')
+	if(found_var(c))
+		*operand = value(c); // asign the value of the variable to *operand
+	else if(c == '-')
 		sign = -1;
 	else if( c == '+')
 		;
@@ -47,18 +56,21 @@ char parse_operand(char c, double* operand)
 		*operand = (double)(c-'0');  // Computing the first significant digit
 	else if( c == '.')
 		hasFractionalPart = 1;  // The operand does not have an integer part (e.g. .1234 )
-	else if( c == '*' || c == '/')
-		return 's'; // SyntaxError: Two operators cannot be consecutive (e.g. 34 + * 78 )
 	else if(c == '(')
-		return 'o'; // return OpeningParenthesis status. We have an operator before '('. (Example: 89 * (90+10) )
+		return 'O'; // return OpeningParenthesis status. We have an operator before '('. (Example: 89 * (90+10) )
 	else
-		return c;
+		return 's';
 
+	char is_unary_sign = (c == '+' || c == '-');
 	c = get_char();
 	char exponent = 0;  // Used for computing the fractional part of the operand
 
-	while( (c >= '0' && c<='9') || c == '.'  ){
-		if(c >= '0' && c<='9'){
+	// OpeningParenthesis after unary sign operator (Example: 89 * -(90+10) )
+	if(c == '(' && is_unary_sign)
+		return 'O';
+
+	while( (c >= '0' && c <= '9') || c == '.'  ){
+		if(c >= '0' && c <= '9'){
 			if(hasFractionalPart == 1)
 				*operand += (double)(c-'0') / (double)pow(10, ++exponent);
 			else
@@ -72,7 +84,8 @@ char parse_operand(char c, double* operand)
 			hasFractionalPart = 1;
 		c = get_char();
 	}
-	*operand *= sign;	
+	*operand *= sign;
+	
 	return c;
 }
 
@@ -94,18 +107,23 @@ char parse_operand(char c, double* operand)
 */
 char parse_expr(double* operands, char* operators, char* window_at)
 {
-	char c;  // character from the buffer
+	char c = '\0';  // character from the buffer
 	char parse_operand(char , double*);
 
 	while((*window_at) < 3){
-		c = get_char();
-		c = parse_operand(c, &operands[*window_at]);
+		do 
+			c = get_char(); // we discard white spaces
+		while( c == ' ' || c == '\t' || c == '\0');
 
+		if (c == '\n' || c == EOF || c == ')')
+			return c == '\n' ? 'n' : (c == EOF ? '.' : 'c'); // End status: We have reached the end of the expression (e.g. 34 + 78 - 90\n or 34 + 78 - 90 EOF )
+		
+		if (op_mode)
+			c = parse_operand(c, &operands[*window_at]);
+		op_mode = 1; 			// reset op_mode for the next operand
+		
 		if(c == 's')
 			return 's'; // syntaxError status
-
-		while( c == ' ' || c == '\t') // we discard white spaces
-			c = get_char();
 
 		switch(c){
 			case '^':
@@ -125,19 +143,18 @@ char parse_expr(double* operands, char* operators, char* window_at)
 				break;
 			case '(':
 				operators[*window_at] = '(';
-				return 'o'; //OpeningParenthesis status (e.g. 89(90+10) )
-			case 'o':
-				return 'o'; //OpeningParenthesis status. We have an operator before the parathensis '(' (e.g. 89 * (90+10) )
+				return 'o'; 	//OpeningParenthesis status. The case of a part-operator parenthesis (e.g. 89(90+10) )
+			case 'O':
+				return 'O'; 	//OpeningParenthesis status. The case of part-operand parenthesis (e.g. 89 * (90+10) )
 			case ')':
-				return 'c'; //ClosingParenthesis status.
+				return 'c'; 	//ClosingParenthesis status.
 			case '\n':
-				return 'n'; //End status: We have reached the end of the expression (e.g. 34 + 78 - 90\n )
+				return 'n'; 	//End status: We have reached the end of the expression (e.g. 34 + 78 - 90\n )
 			case EOF:
-				return '.'; //End status: We have reached the end of the expression (e.g. 34 + 78 - 90 EOF )
-			default:
-				return 's'; //SyntaxError status: We have an invalid character in the expression (e.g. 34 + 78 @ 90 )
+				return '.'; 	//End status: We have reached the end of the expression (e.g. 34 + 78 - 90 EOF )
 		}
 		*window_at += 1;
 	}
-	return '>'; //ContinuingWithExpression status
+	
+	return '>'; 				//ContinuingWithExpression status
 }

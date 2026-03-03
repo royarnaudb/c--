@@ -2,12 +2,13 @@
 #include "compute-math-expr.h"
 #include "io.h"
 
-char status ='\0';
+extern char status; // the status variable defined at compute-math-expr.c
 
 int main(int argc, char* argv[])
 {
 	double calculate();
 	char set_inputstream(char* from_file);
+	double result = 0;
 
 	if(argc > 1){
 		if(!set_inputstream(argv[1])){
@@ -19,14 +20,20 @@ int main(int argc, char* argv[])
 		set_inputstream(NULL); // set inputstream to stdin
 	}
 
-	printf(">>> ");
-
+	char* prompt = (argc > 1) ? "" : ">>> ";
+	
 	do {
-		printf("%.3lf\n", calculate());
-		if(status == 'n' || status == 'c'){
+		printf("%s", prompt);
+		
+		result = calculate();
+		
+		if(status == '.' && argc <= 1)
+			printf("END!\n");
+		else
+			printf("%.3lf\n", result);
+
+		if(status == 'n' || status == 'c')
 			status = '\0'; // set status for the next calculation
-			printf(">>> ");
-		}
 	} while(status != '.' && status != 's');
 
 	return 0;

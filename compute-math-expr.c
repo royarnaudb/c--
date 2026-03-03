@@ -12,7 +12,7 @@
 #include "parse-math-expr.h"
 #include "compute-math-expr.h"
 
-extern char status; // the status variable defined at main.c
+char status ='\0'; // status is used to keep track of the status of the parsing process in calculate() and main()
 
 /*! \fn double calculate(void)
 		\brief
@@ -30,12 +30,15 @@ double calculate(void)
 	double operands[3] = {0,0,0}; // The maximum operands we can have at a time is 3 (WINDOW_SIZE)
 	char operators[3] = {'+','+','+'};
 
-	char parse_expr(double* operands, char* operators, char* window_at);
+	op_mode = 1; // prepare to get the first operand of the expression
+
 	char contains_nest_op(char* operators);
 	void compute(char* operators, double* operands, char* window_at);
 
-	do {
+	do
+	{
 		status = parse_expr(operands, operators, &window_at);
+
 		if(status == '>'){
 			compute(operators, operands, &window_at);
 		}
@@ -44,26 +47,31 @@ double calculate(void)
 			break; // break the loop, then return operands[0] as our result
 		}
 		else if(status == 'o'){
-			if(contains_nest_op(operators)){
-				operators[window_at] = '*';
-				if(window_at < 2)
-					operands[window_at+1] = calculate();
-				else{
-					compute(operators, operands, &window_at);
-					operands[window_at] = calculate();
-				}
+			operators[window_at] = '*';
+			if(window_at < 2){
+				operands[window_at+1] = calculate();
 			}
-			else
+			else { // '(' is the last operator at maxima the window, we first compute the current window
+				compute(operators, operands, &window_at);
 				operands[window_at] = calculate();
-			compute(operators, operands, &window_at);
-
-			if(status == 'n')
-				break; // break the loop, then return operands[0] as our result
+			}
+		}
+		else if(status == 'O'){
+			// open parenthesis when we expect an operand (e.g. <-/+>(OPERAND) )
+			int pre_sign = sign; // we save the sign of the operand before the parenthesis
+			sign = 1; // reset sign for the operand inside the parenthesis
+			operands[window_at] = calculate() * pre_sign; // we multiply the result of the parenthesis by the sign of the operand before it
+			op_mode = 0; // prepare to get the operator following the parenthesis
 		}
 		else if(status == '.'){
 			// last computation before we exit the program, in case we have a valid expression before the EOF (e.g. 89+90 EOF )
 			compute(operators, operands, &window_at);
 			break; // break the loop, then return operands[0] as our result
+		}
+
+		if(status == 'n' || status == '.') {
+			compute(operators, operands, &window_at);
+			break;
 		}
 	} while(status != 's');
 	return operands[0];
@@ -71,9 +79,7 @@ double calculate(void)
 
 char contains_nest_op(char* operators)
 {
-	if(	operators[0] == '(' || operators[1] == '(' || operators[2] == '(' )
-		return 1;
-	return 0;
+	return	(operators[0] == '(' || operators[1] == '(' || operators[2] == '(' ) ? 1 : 0;
 }
 
 /*! \fn	int highest_order_op(char* operators)
@@ -213,16 +219,16 @@ void compute(char* operators, double* operands, char* window_at)
 			shift_window(2, window_at, operators, operands);
 		}
 	}
-	else if(operators[2] == '*' || operators[2] == '/' || operators[2] == '^'){	// if the last operator input is '*' or '/'.
-		if(preced_id == 0 && (operators[0] == '*' || operators[0] == '/')){
+	else if(operators[2] == '*' || operators[2] == '/' || operators[2] == '^'){	// if the last operator input is '*' or '/' or '^'.
+		if(preced_id == 0 && (operators[0] == '*' || operators[0] == '/' || operators[0] == '^')){
 			arithmetic_op(operators[preced_id], &operands[0], &operands[1], &operands[0]);
-			if(operators[1] == '*' || operators[1] == '/'){
+			if(operators[1] == '*' || operators[1] == '/' || operators[1] == '^'){
 				arithmetic_op(operators[1], &operands[0], &operands[2], &operands[0]);
 				shift_window(1, window_at, operators, operands);
 			}
 			else shift_window(2, window_at, operators, operands);
 		}
-		else if(preced_id == 1 && (operators[1] == '*' || operators[1] == '/' || operators[1] == '^')){
+		else if(preced_id == 1){
 			arithmetic_op(operators[preced_id], &operands[1], &operands[2], &operands[1]);
 			shift_window(3, window_at, operators, operands);
 		}
