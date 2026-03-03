@@ -18,6 +18,7 @@
 int sign = 1;
 /// *operand is Positive (default). 'sign' is used at the end of the function to determine the sign of *operand
 int op_mode = 1;
+/// 'op_mode' is set to 1 (True) when we are parsing an operand and set to 0 (False) when we are parsing an operator.
 
 
 /*! \fn char parse_operand(char c, double* operand)
